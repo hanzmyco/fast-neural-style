@@ -9,13 +9,12 @@ class TransformNet(object):
     def __init__(self, input_img):
         self.input_img = input_img
         self.mean_pixels = np.array([123.68, 116.779, 103.939]).reshape((1, 1, 1, 3))
-        self.training=True
-        self.n_test=10000
         self.conv_ksize=[2,2,2,2,2,2]
         self.conv_filter=[32,32,32,32,32,32]
         self.residual_conv_ksize=[2,2,2,2]
         self.residual_conv_filter=[32,32,32,32]
-
+        self.training = True
+        self.n_test = 10000
 
     def conv_relu(self,inputs,filters,k_size,stride,padding,scope_name):
         with tf.variable_scope(scope_name, reuse=tf.AUTO_REUSE) as scope:

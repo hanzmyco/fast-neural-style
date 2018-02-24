@@ -34,10 +34,10 @@ class StyleTransfer(object):
         self.img_height = img_height
         self.train_img_path = train_img_path
         self.style_img = utils.get_resized_image(style_img, img_width, img_height)
-        #self.initial_img = utils.generate_noise_image(self.content_img, img_width, img_height)
         self.batch_size=128
         self.img_width=img_width
         self.img_height=img_height
+
 
 
         ###############################
@@ -55,6 +55,24 @@ class StyleTransfer(object):
         starter_learning_rate=0.1
         self.lr = tf.train.exponential_decay(starter_learning_rate,self.gstep,100000,0.96,staircase=True)
         ###############################
+
+    def create_img_placeholder(self):
+        '''
+        We will use one input_img as a placeholder for the content image,
+        style image, and generated image, because:
+            1. they have the same dimension
+            2. we have to extract the same set of features from them
+        We use a variable instead of a placeholder because we're, at the same time,
+        training the generated image to get the desirable result.
+
+        Note: image height corresponds to number of rows, not columns.
+        '''
+        with tf.name_scope('img_placeholder') as scope:
+            self.img_place_holder = tf.get_variable('img_placeholder',
+                                             shape=([self.batch_size, self.img_height, self.img_width, 3]),
+                                             dtype=tf.float32,
+                                             initializer=tf.zeros_initializer(),
+                                                    trainable=False)
 
     def get_data(self):
         with tf.name_scope('data'):
@@ -81,7 +99,7 @@ class StyleTransfer(object):
         this mean from our images.
 
         '''
-        self.vgg = load_vgg.VGG(self.TransformNet.transformed_img)
+        self.vgg = load_vgg.VGG(self.img_place_holder)
         self.vgg.load()
         #self.content_img -= self.vgg.mean_pixels
         self.style_img -= self.vgg.mean_pixels
@@ -152,7 +170,7 @@ class StyleTransfer(object):
         with tf.variable_scope('losses') as scope:
             with tf.Session() as sess:
                 # assign content image to the input variable
-                sess.run(self.input_img.assign(self.content_img))
+                sess.run(self.img_place_holder.assign(self.TransformNet.transformed_img))
                 # gen_img_content is like a container, to get the specific layer and after running, you apply the img to the layer
                 gen_img_content = getattr(self.vgg, self.content_layer)
                 content_img_content = sess.run(gen_img_content)
@@ -160,7 +178,7 @@ class StyleTransfer(object):
 
 
             with tf.Session() as sess:
-                sess.run(self.input_img.assign(self.style_img))
+                sess.run(self.img_place_holder.assign(self.style_img))
                 style_layers = sess.run([getattr(self.vgg, layer) for layer in self.style_layers])                              
             self._style_loss(style_layers)
 
@@ -200,68 +218,52 @@ class StyleTransfer(object):
         self.optimize()
         self.create_summary()
 
-    def train(self, n_iters):
-        skip_step = 1
+    def train_one_epoch(self, sess, saver, init, writer, epoch, step):
+        start_time = time.time()
+        sess.run(init)
+        self.training = True
+        total_loss = 0
+        n_batches = 0
+        try:
+            while True:
+                _, l, summaries = sess.run([self.opt, self.total_loss, self.summary_op])
+                writer.add_summary(summaries, global_step=step)
+                if (step + 1) % self.TransformNet.skip_step == 0:
+                    print('Loss at step {0}: {1}'.format(step, l))
+                step += 1
+                total_loss += l
+                n_batches += 1
+        except tf.errors.OutOfRangeError:
+            pass
+        saver.save(sess, 'checkpoints/fast-neural-style/', step)
+        print('Average loss at epoch {0}: {1}'.format(epoch, total_loss / n_batches))
+        print('Took: {0} seconds'.format(time.time() - start_time))
+        return step
 
+    def train(self, n_epochs):
+        '''
+        The train function alternates between training one epoch and evaluating
+        '''
         utils.safe_mkdir('checkpoints')
-        utils.safe_mkdir('checkpoints/convnet_style_transfer')
+        utils.safe_mkdir('checkpoints/fast-neural-style')
+        writer = tf.summary.FileWriter('./graphs/fast-neural-style', tf.get_default_graph())
 
         with tf.Session() as sess:
-            
-            ###############################
-            ## TO DO: 
-            ## 1. initialize your variables
-            ## 2. create writer to write your grapp
-            ###############################
             sess.run(tf.global_variables_initializer())
-            sess.run(self.input_img.assign(self.initial_img))
-            writer = tf.summary.FileWriter('./graphs/style_transfer_test', tf.get_default_graph())
-
-            ###############################
-            ## TO DO: 
-            ## 1. create a saver object
-            ## 2. check if a checkpoint exists, restore the variables
-            ##############################
             saver = tf.train.Saver()
-            ckpt = tf.train.get_checkpoint_state(os.path.dirname('checkpoints/convnet_style_transfer/checkpoint'))
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname('checkpoints/fast-neural-style/checkpoint'))
             if ckpt and ckpt.model_checkpoint_path:
                 saver.restore(sess, ckpt.model_checkpoint_path)
 
-            initial_step = self.gstep.eval()
+            step = self.gstep.eval()
 
-            start_time = time.time()
-            for index in range(initial_step, n_iters):
-                if index >= 5 and index < 20:
-                    skip_step = 10
-                elif index >= 20:
-                    skip_step = 20
-                _,l,summaries,out_image = sess.run([self.opt,self.total_loss,self.summary_op,self.input_img])
-                if (index + 1) % skip_step == 0:
-                    ###############################
-                    ## TO DO: obtain generated image, loss, and summary
-                    gen_image, total_loss, summary = out_image,l,summaries
-                    ###############################
-                    
-                    # add back the mean pixels we subtracted before
-                    gen_image = gen_image + self.vgg.mean_pixels 
-                    writer.add_summary(summary, global_step=index)
-                    print('Step {}\n   Sum: {:5.1f}'.format(index + 1, np.sum(gen_image)))
-                    print('   Loss: {:5.1f}'.format(total_loss))
-                    print('   Took: {} seconds'.format(time.time() - start_time))
-                    start_time = time.time()
+            for epoch in range(n_epochs):
+                step = self.train_one_epoch(sess, saver, self.train_init, writer, epoch, step)
 
-                    filename = 'outputs/%d.png' % (index)
-                    utils.save_image(filename, gen_image)
-
-                    if (index + 1) % 20 == 0:
-                        ###############################
-                        ## TO DO: save the variables into a checkpoint
-                        ###############################
-                        saver.save(sess, 'checkpoints/convnet_style_transfer/style-transfer-convnet')
-                        pass
+        writer.close()
 
 if __name__ == '__main__':
     setup()
     machine = StyleTransfer('content/deadpool.jpg', 'styles/guernica.jpg', 333, 250)
     machine.build()
-    machine.train(30000)
+    machine.train(n_epochs=30)
