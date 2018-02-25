@@ -11,11 +11,23 @@ https://docs.google.com/document/d/1FpueD-3mScnD0SJQDtwmOb1FrSwo1NGowkXzMwPoLH4/
 """
 
 import os
+import gzip
+import shutil
+import struct
+import urllib
+from os import listdir
+from os.path import isfile,join
 
 from PIL import Image, ImageOps
 import numpy as np
 import scipy.misc
 from six.moves import urllib
+import cv2
+
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+
+from matplotlib import pyplot as plt
+import tensorflow as tf
 
 def download(download_link, file_name, expected_bytes):
     """ Download the pretrained VGG-19 model if it's not already downloaded """
@@ -60,6 +72,20 @@ def safe_mkdir(path):
     except OSError:
         pass
 
-def get_image_dataset(batch_size,train_iamge_path):
-    train_data=None
+
+def get_image_dataset(batch_size,train_img_path):
+    file_names=[train_img_path+'/'+f for f in listdir(train_img_path) if isfile(join(train_img_path,f))]
+    training_imgs=[]
+    for file_name in file_names:
+        training_imgs.append(get_resized_image(file_name,333,250))
+    train_data=tf.data.Dataset.from_tensor_slices(np.asarray(training_imgs))
+    train_data = train_data.shuffle(10000)  # if you want to shuffle your data
+    train_data = train_data.batch(batch_size)
     return train_data
+
+
+
+
+
+
+get_image_dataset(1,'/Users/hanz/Deep_Learning/fast-neural-style/data/test')

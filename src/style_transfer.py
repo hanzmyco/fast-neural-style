@@ -264,6 +264,6 @@ class StyleTransfer(object):
 
 if __name__ == '__main__':
     setup()
-    machine = StyleTransfer('content/deadpool.jpg', 'styles/guernica.jpg', 333, 250)
+    machine = StyleTransfer('/Users/hanz/Deep_Learning/fast-neural-style/data/test', 'styles/guernica.jpg', 333, 250)
     machine.build()
     machine.train(n_epochs=30)
