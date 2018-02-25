@@ -24,7 +24,7 @@ def setup():
     utils.safe_mkdir('outputs')
 
 class StyleTransfer(object):
-    def __init__(self, train_img_path, style_img, img_width, img_height):
+    def __init__(self, train_img_path, style_img, img_width, img_height,batch_size):
         '''
         img_width and img_height are the dimensions we expect from the generated image.
         We will resize input content image and input style image to match this dimension.
@@ -34,11 +34,10 @@ class StyleTransfer(object):
         self.img_height = img_height
         self.train_img_path = train_img_path
         self.style_img = utils.get_resized_image(style_img, img_width, img_height)
-        self.batch_size=128
+        self.batch_size=batch_size
         self.img_width=img_width
         self.img_height=img_height
-
-
+        #self.mean_pixels = np.array([123.68, 116.779, 103.939]).reshape((1, 1, 1, 3))
 
         ###############################
         ## TO DO
@@ -79,14 +78,14 @@ class StyleTransfer(object):
             train_data = utils.get_image_dataset(self.batch_size,self.train_img_path)
             iterator= tf.data.Iterator.from_structure(train_data.output_types,
                                                        train_data.output_shapes)
-            img,_= iterator.get_next()
+            self.img = iterator.get_next()
 
             # reshape the image to make it work with tf.nn.conv2d
-            self.img = utils.get_resized_image(img,self.img_width,self.img_height)
+            #self.img = utils.get_resized_image(img,self.img_width,self.img_height)
             self.train_init = iterator.make_initializer(train_data)  # initializer for train_data
 
     def transform(self):
-        self.TransformNet=transform_net.TransforNet(self.img)
+        self.TransformNet=transform_net.TransformNet(self.img)
         self.TransformNet.inference()
 
     def load_vgg(self):
@@ -100,9 +99,9 @@ class StyleTransfer(object):
 
         '''
         self.vgg = load_vgg.VGG(self.img_place_holder)
-        self.vgg.load()
-        #self.content_img -= self.vgg.mean_pixels
+        self.TransformNet.transformed_img -= self.vgg.mean_pixels
         self.style_img -= self.vgg.mean_pixels
+        self.vgg.load()
 
     def _content_loss(self, P, F):
         ''' Calculate the loss between the feature representation of the
@@ -264,6 +263,6 @@ class StyleTransfer(object):
 
 if __name__ == '__main__':
     setup()
-    machine = StyleTransfer('/Users/hanz/Deep_Learning/fast-neural-style/data/test', 'styles/guernica.jpg', 333, 250)
+    machine = StyleTransfer('/Users/hanz/Deep_Learning/fast-neural-style/data/test', 'styles/guernica.jpg', 256, 256,4)
     machine.build()
     machine.train(n_epochs=30)

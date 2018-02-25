@@ -54,7 +54,7 @@ def get_resized_image(img_path, width, height, save=True):
         if not os.path.exists(out_path):
             image.save(out_path)
     image = np.asarray(image, np.float32)
-    return np.expand_dims(image, 0)
+    return image
 
 def generate_noise_image(content_image, width, height, noise_ratio=0.6):
     noise_image = np.random.uniform(-20, 20, (1, height, width, 3)).astype(np.float32)
@@ -74,10 +74,10 @@ def safe_mkdir(path):
 
 
 def get_image_dataset(batch_size,train_img_path):
-    file_names=[train_img_path+'/'+f for f in listdir(train_img_path) if isfile(join(train_img_path,f))]
+    file_names=[train_img_path+'/'+f for f in listdir(train_img_path) if (isfile(join(train_img_path,f))and f.endswith('.jpg'))]
     training_imgs=[]
     for file_name in file_names:
-        training_imgs.append(get_resized_image(file_name,333,250))
+        training_imgs.append(get_resized_image(file_name,333,250,False))
     train_data=tf.data.Dataset.from_tensor_slices(np.asarray(training_imgs))
     train_data = train_data.shuffle(10000)  # if you want to shuffle your data
     train_data = train_data.batch(batch_size)
