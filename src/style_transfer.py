@@ -33,11 +33,11 @@ class StyleTransfer(object):
         self.img_width = img_width
         self.img_height = img_height
         self.train_img_path = train_img_path
-        self.style_img = utils.get_resized_image(style_img, img_width, img_height)
-        self.batch_size=batch_size
+        self.batch_size = batch_size
+        self.style_imgs = utils.get_resized_image(style_img, img_width, img_height)
         self.img_width=img_width
         self.img_height=img_height
-        #self.mean_pixels = np.array([123.68, 116.779, 103.939]).reshape((1, 1, 1, 3))
+        self.mean_pixels = np.array([123.68, 116.779, 103.939]).reshape((1, 1, 1, 3))
 
         ###############################
         ## TO DO
@@ -75,7 +75,7 @@ class StyleTransfer(object):
 
     def get_data(self):
         with tf.name_scope('data'):
-            train_data = utils.get_image_dataset(self.batch_size,self.train_img_path)
+            train_data = utils.get_image_dataset(self.batch_size,self.train_img_path,self.img_width,self.img_height)
             iterator= tf.data.Iterator.from_structure(train_data.output_types,
                                                        train_data.output_shapes)
             self.img = iterator.get_next()
@@ -83,6 +83,7 @@ class StyleTransfer(object):
             # reshape the image to make it work with tf.nn.conv2d
             #self.img = utils.get_resized_image(img,self.img_width,self.img_height)
             self.train_init = iterator.make_initializer(train_data)  # initializer for train_data
+            #self.create_img_placeholder()
 
     def transform(self):
         self.TransformNet=transform_net.TransformNet(self.img)
@@ -98,10 +99,19 @@ class StyleTransfer(object):
         this mean from our images.
 
         '''
-        self.vgg = load_vgg.VGG(self.img_place_holder)
-        self.TransformNet.transformed_img -= self.vgg.mean_pixels
-        self.style_img -= self.vgg.mean_pixels
-        self.vgg.load()
+        self.TransformNet.transformed_img -= self.mean_pixels
+        self.vgg_transformed = load_vgg.VGG(self.TransformNet.transformed_img)
+        self.vgg_transformed.load()
+
+        self.style_imgs = np.expand_dims(self.style_imgs, 0)
+        self.style_imgs -= self.mean_pixels
+        self.vgg_style_imgs = load_vgg.VGG(self.style_imgs)
+        self.vgg_style_imgs.load()
+
+        self.img -= self.mean_pixels
+        self.vgg_content_imgs = load_vgg.VGG(self.img)
+        self.vgg_content_imgs.load()
+
 
     def _content_loss(self, P, F):
         ''' Calculate the loss between the feature representation of the
@@ -117,19 +127,27 @@ class StyleTransfer(object):
         '''
         ###############################
         ## TO DO  actually reshape or not it's the same
-        feature_P = tf.reshape(P, [P.shape[0], P.shape[1] * P.shape[2], P.shape[3]])
-        feature_F=tf.reshape(F,[F.shape[0],F.shape[1]*F.shape[2],F.shape[3]])
-        self.content_loss = 1/(P.shape[1]*P.shape[2]*P.shape[3])*tf.reduce_sum(tf.square(tf.subtract(feature_P,feature_F)))
+        #feature_P = tf.reshape(P, [P.shape[0], P.shape[1] * P.shape[2], P.shape[3]])
+        #feature_F=tf.reshape(F,[F.shape[0],F.shape[1]*F.shape[2],F.shape[3]])
+        factor=1/(P.shape[1]*P.shape[2]*P.shape[3]).value
+        self.content_loss = factor*tf.reduce_sum(tf.square(tf.subtract(P,F)),[1,2,3])
         ###############################
         
-    def _gram_matrix(self, F, N, M):
+    def _gram_matrix(self, F):
         """ Create and return the gram matrix for tensor F
             Hint: you'll first have to reshape F
         """
         ###############################
         ## TO DO
-        feature=tf.reshape(F,[F.shape[1]*F.shape[2],F.shape[3]])
-        return tf.matmul(tf.transpose(feature),feature)
+        #out_list=tf.contrib.layers.flatten(F)
+        out_list = F.get_shape().as_list()
+        for ite in out_list:
+            print('lol')
+            feature = tf.reshape(ite, [ite.shape[0] * ite.shape[1], ite.shape[2]])
+            #out_stack.append(tf.matmul(tf.transpose(feature), feature))
+        #return tf.stack(out_stack)
+
+
         ###############################
 
     def _single_style_loss(self, a, g):
@@ -146,40 +164,36 @@ class StyleTransfer(object):
         """
         ###############################
         ## TO DO
-        a_tensor=tf.convert_to_tensor(a)
-        A=self._gram_matrix(a_tensor,a_tensor.shape[2],a_tensor.shape[0]*a_tensor.shape[1])
-        G=self._gram_matrix(g,g.shape[2],g.shape[0]*g.shape[1])
-        return tf.reduce_sum(tf.square(tf.subtract(G,A)))/(4*a.shape[2]*a.shape[2]*a.shape[1]*a.shape[1]*a.shape[3]*a.shape[3])
+        A=self._gram_matrix(a)
+        G=self._gram_matrix(g)
+        return tf.reduce_sum(tf.square(tf.subtract(G,A)),[1,2])/(4*(a.shape[2]*a.shape[2]*a.shape[1]*a.shape[1]*a.shape[3]*a.shape[3]).value)
         ###############################
 
-    def _style_loss(self, A):
+    def _style_loss(self, A,B):
         """ Calculate the total style loss as a weighted sum 
         of style losses at all style layers
         Hint: you'll have to use _single_style_loss()
         """
         ###############################
         ## TO DO
-        self.style_loss = 0
-        gen_img_styles=[getattr(self.vgg, layer) for layer in self.style_layers]
+        self.style_loss = tf.zeros_like(A[0])
         for index in range(0,len(A)):
-            self.style_loss+=self.style_layer_w[index]*self._single_style_loss(A[index],gen_img_styles[index])
+            self.style_loss+=self.style_layer_w[index]*self._single_style_loss(A[index],B[index])
         ###############################
 
     def losses(self):
         with tf.variable_scope('losses') as scope:
             with tf.Session() as sess:
-                # assign content image to the input variable
-                sess.run(self.img_place_holder.assign(self.TransformNet.transformed_img))
-                # gen_img_content is like a container, to get the specific layer and after running, you apply the img to the layer
-                gen_img_content = getattr(self.vgg, self.content_layer)
-                content_img_content = sess.run(gen_img_content)
+                gen_img_content = getattr(self.vgg_transformed, self.content_layer)
+                content_img_content = getattr(self.vgg_content_imgs, self.content_layer)
             self._content_loss(content_img_content, gen_img_content)
 
-
             with tf.Session() as sess:
-                sess.run(self.img_place_holder.assign(self.style_img))
-                style_layers = sess.run([getattr(self.vgg, layer) for layer in self.style_layers])                              
-            self._style_loss(style_layers)
+                print('stop here 1')
+                print('stop here 2')
+                style_layers = [getattr(self.vgg_style_imgs, layer) for layer in self.style_layers]
+                gen_img_style_layers=[getattr(self.vgg_transformed, layer) for layer in self.style_layers]
+            self._style_loss(style_layers,gen_img_style_layers)
 
             ##########################################
             ## TO DO: create total loss. 
@@ -263,6 +277,6 @@ class StyleTransfer(object):
 
 if __name__ == '__main__':
     setup()
-    machine = StyleTransfer('/Users/hanz/Deep_Learning/fast-neural-style/data/test', 'styles/guernica.jpg', 256, 256,4)
+    machine = StyleTransfer('/Users/hanz/Deep_Learning/fast-neural-style/data/test', 'styles/guernica.jpg', 256, 256,1)
     machine.build()
     machine.train(n_epochs=30)

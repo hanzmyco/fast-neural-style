@@ -27,9 +27,9 @@ class VGG(object):
         self.data=scipy.io.loadmat(VGG_FILENAME)
         self.vgg_layers = self.data['layers']
         self.input_img = input_img
-        mean=self.data['normalization'][0][0][0]
+        #mean=self.data['normalization'][0][0][0]
         #self.mean_pixels = np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3))
-        self.mean_pixel = np.mean(mean,axis=(0,1))
+        #self.mean_pixel = np.mean(mean,axis=(0,1))
 
 
     def _weights(self, layer_idx, expected_layer_name):
