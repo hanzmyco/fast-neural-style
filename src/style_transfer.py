@@ -139,14 +139,17 @@ class StyleTransfer(object):
         """
         ###############################
         ## TO DO
-        #out_list=tf.contrib.layers.flatten(F)
+        image_feature= tf.reshape(F,[-1,(F.shape[1]*F.shape[2]).value,F.shape[3].value])
+        return tf.matmul(tf.transpose(image_feature,perm=[0,2,1]),image_feature)
+
+        '''
         out_list = F.get_shape().as_list()
         for ite in out_list:
             print('lol')
             feature = tf.reshape(ite, [ite.shape[0] * ite.shape[1], ite.shape[2]])
             #out_stack.append(tf.matmul(tf.transpose(feature), feature))
         #return tf.stack(out_stack)
-
+        '''
 
         ###############################
 
