@@ -34,15 +34,15 @@ class TransformNet(object):
                                      [k_size,k_size,filters,in_channels],
                                      initializer=tf.truncated_normal_initializer())
             new_rows,new_cols = int(rows*stride),int(cols*stride)
-
-            new_shape=[-1,new_rows,new_cols,filters]
+            # this is important
+            new_shape=[tf.shape(inputs)[0],new_rows,new_cols,filters]
             print('stop here')
             tf_shape = tf.stack(new_shape)
             strides_shape=[1,stride,stride,1]
 
             conv = tf.nn.conv2d_transpose(inputs,kernel,tf_shape,strides_shape,padding=padding)
             conv = self._instance_norm(conv)
-        return tf.nn.relu(conv,name=scope.name)
+        return tf.reshape(tf.nn.relu(conv,name=scope.name),tf_shape)
 
     def _instance_norm(self,inputs, train=True):
         batch, rows, cols, channels = [i.value for i in inputs.get_shape()]
@@ -130,7 +130,7 @@ class TransformNet(object):
                                          k_size=self.conv_ksize[3],
                                          stride=2,
                                          padding='SAME',
-                                         scope_name='convZ4')
+                                         scope_name='conv4')
         conv5 = self.conv_relu_transpose(inputs=conv4,
                                          filters=self.conv_filter[4],
                                          k_size=self.conv_ksize[4],

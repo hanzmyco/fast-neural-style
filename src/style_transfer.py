@@ -139,18 +139,8 @@ class StyleTransfer(object):
         """
         ###############################
         ## TO DO
-        image_feature= tf.reshape(F,[-1,(F.shape[1]*F.shape[2]).value,F.shape[3].value])
+        image_feature= tf.reshape(F,[tf.shape(F)[0],(F.shape[1]*F.shape[2]).value,F.shape[3].value])
         return tf.matmul(tf.transpose(image_feature,perm=[0,2,1]),image_feature)
-
-        '''
-        out_list = F.get_shape().as_list()
-        for ite in out_list:
-            print('lol')
-            feature = tf.reshape(ite, [ite.shape[0] * ite.shape[1], ite.shape[2]])
-            #out_stack.append(tf.matmul(tf.transpose(feature), feature))
-        #return tf.stack(out_stack)
-        '''
-
         ###############################
 
     def _single_style_loss(self, a, g):
@@ -179,7 +169,7 @@ class StyleTransfer(object):
         """
         ###############################
         ## TO DO
-        self.style_loss = tf.zeros_like(A[0])
+        self.style_loss = tf.zeros([self.batch_size,1])
         for index in range(0,len(A)):
             self.style_loss+=self.style_layer_w[index]*self._single_style_loss(A[index],B[index])
         ###############################
@@ -191,11 +181,11 @@ class StyleTransfer(object):
                 content_img_content = getattr(self.vgg_content_imgs, self.content_layer)
             self._content_loss(content_img_content, gen_img_content)
 
-            with tf.Session() as sess:
-                print('stop here 1')
-                print('stop here 2')
-                style_layers = [getattr(self.vgg_style_imgs, layer) for layer in self.style_layers]
-                gen_img_style_layers=[getattr(self.vgg_transformed, layer) for layer in self.style_layers]
+            #with tf.Session() as sess:
+            print('stop here 1')
+            print('stop here 2')
+            style_layers = [getattr(self.vgg_style_imgs, layer) for layer in self.style_layers]
+            gen_img_style_layers=[getattr(self.vgg_transformed, layer) for layer in self.style_layers]
             self._style_loss(style_layers,gen_img_style_layers)
 
             ##########################################
