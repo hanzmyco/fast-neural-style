@@ -275,6 +275,7 @@ if __name__ == '__main__':
     windows_path='C:\\Users\\hanzhan.REDMOND\\Source\\fast-neural-style\\data\\test\\'
     windows_path2='C:\\Users\\hanzhan.REDMOND\\OneDrive - Microsoft\\cocodata\\train2014\\'
     mac_path='/Users/hanz/Deep_Learning/fast-neural-style/data/test'
-    machine = StyleTransfer(windows_path, 'styles/guernica.jpg', 256, 256,20)
+    linux_path='/home/hanzhan/dl/fast-neural-style/data/training/'
+    machine = StyleTransfer(linux_path, 'styles/guernica.jpg', 256, 256,20)
     machine.build()
     machine.train(n_epochs=30)
