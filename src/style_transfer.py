@@ -47,12 +47,14 @@ class StyleTransfer(object):
         # content_w, style_w: corresponding weights for content loss and style loss
         self.content_w = 1
         self.style_w = 20
+        self.skip_step = 20
         # style_layer_w: weights for different style layers. deep layers have more weights
         self.style_layer_w = [0.5, 1.0, 1.5, 3.0, 4.0] 
         self.gstep = tf.Variable(0, dtype=tf.int32,
                                 trainable=False, name='global_step')
         starter_learning_rate=0.1
-        self.lr = tf.train.exponential_decay(starter_learning_rate,self.gstep,100000,0.96,staircase=True)
+        #self.lr = tf.train.exponential_decay(starter_learning_rate,self.gstep,100000,0.96,staircase=True)
+        self.lr=10000
         ###############################
 
     def create_img_placeholder(self):
@@ -206,11 +208,11 @@ class StyleTransfer(object):
         ## TO DO: create summaries for all the losses
         ## Hint: don't forget to merge them
         with tf.name_scope('summaries'):
-            tf.summary.scalar('total_loss', self.total_loss)
+           # tf.summary.scalar('total_loss', self.total_loss)
             tf.summary.histogram('histogram loss', self.total_loss)
-            tf.summary.scalar('content_loss', self.content_loss)
+            #tf.summary.scalar('content_loss', self.content_loss)
             tf.summary.histogram('histogram content_loss', self.content_loss)
-            tf.summary.scalar('styles_loss', self.style_loss)
+#            tf.summary.scalar('styles_loss', self.style_loss)
             tf.summary.histogram('histogram styles_loss', self.style_loss)
             self.summary_op = tf.summary.merge_all()
         ###############################
@@ -234,7 +236,7 @@ class StyleTransfer(object):
             while True:
                 _, l, summaries = sess.run([self.opt, self.total_loss, self.summary_op])
                 writer.add_summary(summaries, global_step=step)
-                if (step + 1) % self.TransformNet.skip_step == 0:
+                if (step + 1) % self.skip_step == 0:
                     print('Loss at step {0}: {1}'.format(step, l))
                 step += 1
                 total_loss += l
@@ -270,6 +272,9 @@ class StyleTransfer(object):
 
 if __name__ == '__main__':
     setup()
-    machine = StyleTransfer('/Users/hanz/Deep_Learning/fast-neural-style/data/test', 'styles/guernica.jpg', 256, 256,1)
+    windows_path='C:\\Users\\hanzhan.REDMOND\\Source\\fast-neural-style\\data\\test\\'
+    windows_path2='C:\\Users\\hanzhan.REDMOND\\OneDrive - Microsoft\\cocodata\\train2014\\'
+    mac_path='/Users/hanz/Deep_Learning/fast-neural-style/data/test'
+    machine = StyleTransfer(windows_path, 'styles/guernica.jpg', 256, 256,20)
     machine.build()
     machine.train(n_epochs=30)

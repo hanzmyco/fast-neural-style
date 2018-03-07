@@ -22,7 +22,7 @@ from PIL import Image, ImageOps
 import numpy as np
 import scipy.misc
 from six.moves import urllib
-import cv2
+#import cv2
 
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 
