@@ -107,13 +107,16 @@ class StyleTransfer(object):
 
         self.style_imgs = np.expand_dims(self.style_imgs, 0)
         self.style_imgs -= self.mean_pixels
+        
         #self.vgg_style_imgs = load_vgg.VGG(self.style_imgs)
         self.vgg_style_imgs = load_vgg.VGG(self.img_place_holder)
+        #self.vgg_style_imgs = load_vgg.VGG(self.style_imgs)
         self.vgg_style_imgs.load()
 
         self.img -= self.mean_pixels
         self.vgg_content_imgs = load_vgg.VGG(self.img)
         self.vgg_content_imgs.load()
+
 
 
     def _content_loss(self, P, F):
@@ -203,7 +206,8 @@ class StyleTransfer(object):
         ## TO DO: create optimizer
         self.opt = tf.train.AdamOptimizer(self.lr).minimize(self.total_loss,
                                                             global_step=self.gstep)
-        ###############################
+        ###############################:x
+
 
     def create_summary(self):
         ###############################
