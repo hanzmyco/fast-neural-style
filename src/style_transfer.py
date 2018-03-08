@@ -52,9 +52,9 @@ class StyleTransfer(object):
         self.style_layer_w = [0.5, 1.0, 1.5, 3.0, 4.0] 
         self.gstep = tf.Variable(0, dtype=tf.int32,
                                 trainable=False, name='global_step')
-        starter_learning_rate=0.1
-        #self.lr = tf.train.exponential_decay(starter_learning_rate,self.gstep,100000,0.96,staircase=True)
-        self.lr=10000
+        starter_learning_rate=0.01
+        self.lr = tf.train.exponential_decay(starter_learning_rate,self.gstep,100000,0.96,staircase=True)
+        #self.lr=10000
         ###############################
 
     def create_img_placeholder(self):
@@ -171,7 +171,7 @@ class StyleTransfer(object):
         """
         ###############################
         ## TO DO
-        self.style_loss = tf.zeros([self.batch_size,1])
+        self.style_loss = 0
         for index in range(0,len(A)):
             self.style_loss+=self.style_layer_w[index]*self._single_style_loss(A[index],B[index])
         ###############################
@@ -193,7 +193,7 @@ class StyleTransfer(object):
             ##########################################
             ## TO DO: create total loss. 
             ## Hint: don't forget the weights for the content loss and style loss
-            self.total_loss = self.content_w*self.content_loss +self.style_w*self.style_loss
+            self.total_loss = tf.reduce_mean(self.content_w*self.content_loss) +tf.reduce_mean(self.style_w*self.style_loss)
             ##########################################
 
     def optimize(self):
@@ -201,7 +201,8 @@ class StyleTransfer(object):
         ## TO DO: create optimizer
         self.opt = tf.train.AdamOptimizer(self.lr).minimize(self.total_loss,
                                                             global_step=self.gstep)
-        ###############################
+        ###############################:x
+
 
     def create_summary(self):
         ###############################
