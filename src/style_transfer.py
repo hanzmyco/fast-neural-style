@@ -199,7 +199,7 @@ class StyleTransfer(object):
             ##########################################
             ## TO DO: create total loss. 
             ## Hint: don't forget the weights for the content loss and style loss
-            self.total_loss = tf.reduce_mean(self.content_w*self.content_loss) +tf.reduce_mean(self.style_w*self.style_loss)
+            self.total_loss = tf.reduce_mean(self.content_w*self.content_loss) # + tf.reduce_mean(self.style_w*self.style_loss)
             ##########################################
 
     def optimize(self):
@@ -215,14 +215,14 @@ class StyleTransfer(object):
         ## TO DO: create summaries for all the losses
         ## Hint: don't forget to merge them
         with tf.name_scope('summaries'):
-           # tf.summary.scalar('total_loss', self.total_loss)
+            #tf.summary.scalar('total_loss', self.total_loss)
             tf.summary.histogram('histogram loss', self.total_loss)
             #tf.summary.scalar('content_loss', self.content_loss)
             tf.summary.histogram('histogram content_loss', self.content_loss)
-#            tf.summary.scalar('styles_loss', self.style_loss)
+            #tf.summary.scalar('styles_loss', self.style_loss)
             tf.summary.histogram('histogram styles_loss', self.style_loss)
             self.summary_op = tf.summary.merge_all()
-        ###############################
+        ###:############################
 
 
     def build(self):
@@ -283,6 +283,6 @@ if __name__ == '__main__':
     windows_path2='C:\\Users\\hanzhan.REDMOND\\OneDrive - Microsoft\\cocodata\\train2014\\'
     mac_path='/Users/hanz/Deep_Learning/fast-neural-style/data/test'
     linux_path='/home/hanzhan/dl/fast-neural-style/data/training/'
-    machine = StyleTransfer(windows_path, '../data/styles/guernica.jpg', 256, 256,20)
+    machine = StyleTransfer(linux_path, '../data/styles/guernica.jpg', 256, 256,20)
     machine.build()
-    machine.train(n_epochs=30)
+    machine.train(n_epochs=300)
