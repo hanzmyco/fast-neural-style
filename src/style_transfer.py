@@ -107,6 +107,7 @@ class StyleTransfer(object):
 
         self.style_imgs = np.expand_dims(self.style_imgs, 0)
         self.style_imgs -= self.mean_pixels
+        #self.style_imgs = tf.convert_to_tensor(self.style_imgs)
         self.vgg_style_imgs = load_vgg.VGG(self.style_imgs)
         self.vgg_style_imgs.load()
 
@@ -277,6 +278,6 @@ if __name__ == '__main__':
     windows_path2='C:\\Users\\hanzhan.REDMOND\\OneDrive - Microsoft\\cocodata\\train2014\\'
     mac_path='/Users/hanz/Deep_Learning/fast-neural-style/data/test'
     linux_path='/home/hanzhan/dl/fast-neural-style/data/training/'
-    machine = StyleTransfer(linux_path, '../data/styles/guernica.jpg', 256, 256,20)
+    machine = StyleTransfer(mac_path, '../data/styles/guernica.jpg', 256, 256,4)
     machine.build()
     machine.train(n_epochs=30)
