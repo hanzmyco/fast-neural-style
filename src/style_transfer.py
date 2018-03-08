@@ -52,9 +52,9 @@ class StyleTransfer(object):
         self.style_layer_w = [0.5, 1.0, 1.5, 3.0, 4.0] 
         self.gstep = tf.Variable(0, dtype=tf.int32,
                                 trainable=False, name='global_step')
-        starter_learning_rate=0.1
-        #self.lr = tf.train.exponential_decay(starter_learning_rate,self.gstep,100000,0.96,staircase=True)
-        self.lr=10000
+        starter_learning_rate=100.0
+        self.lr = tf.train.exponential_decay(starter_learning_rate,self.gstep,100000,0.96,staircase=True)
+        #self.lr=10000
         ###############################
 
     def create_img_placeholder(self):
@@ -70,7 +70,7 @@ class StyleTransfer(object):
         '''
         with tf.name_scope('img_placeholder') as scope:
             self.img_place_holder = tf.get_variable('img_placeholder',
-                                             shape=([self.batch_size, self.img_height, self.img_width, 3]),
+                                             shape=([1, self.img_height, self.img_width, 3]),
                                              dtype=tf.float32,
                                              initializer=tf.zeros_initializer(),
                                                     trainable=False)
@@ -85,7 +85,7 @@ class StyleTransfer(object):
             # reshape the image to make it work with tf.nn.conv2d
             #self.img = utils.get_resized_image(img,self.img_width,self.img_height)
             self.train_init = iterator.make_initializer(train_data)  # initializer for train_data
-            #self.create_img_placeholder()
+            self.create_img_placeholder()
 
     def transform(self):
         self.TransformNet=transform_net.TransformNet(self.img)
@@ -107,7 +107,8 @@ class StyleTransfer(object):
 
         self.style_imgs = np.expand_dims(self.style_imgs, 0)
         self.style_imgs -= self.mean_pixels
-        self.vgg_style_imgs = load_vgg.VGG(self.style_imgs)
+        #self.vgg_style_imgs = load_vgg.VGG(self.style_imgs)
+        self.vgg_style_imgs = load_vgg.VGG(self.img_place_holder)
         self.vgg_style_imgs.load()
 
         self.img -= self.mean_pixels
@@ -171,7 +172,7 @@ class StyleTransfer(object):
         """
         ###############################
         ## TO DO
-        self.style_loss = tf.zeros([self.batch_size,1])
+        self.style_loss = 0
         for index in range(0,len(A)):
             self.style_loss+=self.style_layer_w[index]*self._single_style_loss(A[index],B[index])
         ###############################
@@ -183,17 +184,18 @@ class StyleTransfer(object):
                 content_img_content = getattr(self.vgg_content_imgs, self.content_layer)
             self._content_loss(content_img_content, gen_img_content)
 
-            #with tf.Session() as sess:
-            print('stop here 1')
-            print('stop here 2')
-            style_layers = [getattr(self.vgg_style_imgs, layer) for layer in self.style_layers]
-            gen_img_style_layers=[getattr(self.vgg_transformed, layer) for layer in self.style_layers]
+            with tf.Session() as sess:
+                print('stop here 1')
+                print('stop here 2')
+                sess.run(self.img_place_holder.assign(self.style_imgs))
+                style_layers = [getattr(self.vgg_style_imgs, layer) for layer in self.style_layers]
+                gen_img_style_layers=[getattr(self.vgg_transformed, layer) for layer in self.style_layers]
             self._style_loss(style_layers,gen_img_style_layers)
 
             ##########################################
             ## TO DO: create total loss. 
             ## Hint: don't forget the weights for the content loss and style loss
-            self.total_loss = self.content_w*self.content_loss +self.style_w*self.style_loss
+            self.total_loss = tf.reduce_mean(self.content_w*self.content_loss) +tf.reduce_mean(self.style_w*self.style_loss)
             ##########################################
 
     def optimize(self):
@@ -272,10 +274,10 @@ class StyleTransfer(object):
 
 if __name__ == '__main__':
     setup()
-    windows_path='C:\\Users\\hanzhan.REDMOND\\Source\\fast-neural-style\\data\\test\\'
+    windows_path='C:\\Users\\hanzhan.REDMOND\\Source\\fast-neural-style\\data\\train\\'
     windows_path2='C:\\Users\\hanzhan.REDMOND\\OneDrive - Microsoft\\cocodata\\train2014\\'
     mac_path='/Users/hanz/Deep_Learning/fast-neural-style/data/test'
     linux_path='/home/hanzhan/dl/fast-neural-style/data/training/'
-    machine = StyleTransfer(linux_path, '../data/styles/guernica.jpg', 256, 256,20)
+    machine = StyleTransfer(windows_path, '../data/styles/guernica.jpg', 256, 256,20)
     machine.build()
     machine.train(n_epochs=30)
