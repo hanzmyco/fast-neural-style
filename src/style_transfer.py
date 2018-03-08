@@ -34,7 +34,7 @@ class StyleTransfer(object):
         self.img_height = img_height
         self.train_img_path = train_img_path
         self.batch_size = batch_size
-        self.style_imgs = utils.get_resized_image(style_img, img_width, img_height)
+        self.style_img = utils.get_resized_image(style_img, img_width, img_height)
         self.img_width=img_width
         self.img_height=img_height
         self.mean_pixels = np.array([123.68, 116.779, 103.939]).reshape((1, 1, 1, 3))
@@ -70,7 +70,7 @@ class StyleTransfer(object):
         '''
         with tf.name_scope('img_placeholder') as scope:
             self.img_place_holder = tf.get_variable('img_placeholder',
-                                             shape=([1, self.img_height, self.img_width, 3]),
+                                             shape=([self.batch_size, self.img_height, self.img_width, 3]),
                                              dtype=tf.float32,
                                              initializer=tf.zeros_initializer(),
                                                     trainable=False)
@@ -105,9 +105,10 @@ class StyleTransfer(object):
         self.vgg_transformed = load_vgg.VGG(self.TransformNet.transformed_img)
         self.vgg_transformed.load()
 
-        self.style_imgs = np.expand_dims(self.style_imgs, 0)
-        self.style_imgs -= self.mean_pixels
-        
+        self.style_img = np.expand_dims(self.style_img, 0)
+        self.style_img -= self.mean_pixels
+        self.style_imgs = np.array([self.style_img]*self.batch_size).reshape(self.batch_size,self.img_width,self.img_height,3)
+
         #self.vgg_style_imgs = load_vgg.VGG(self.style_imgs)
         self.vgg_style_imgs = load_vgg.VGG(self.img_place_holder)
         #self.vgg_style_imgs = load_vgg.VGG(self.style_imgs)
